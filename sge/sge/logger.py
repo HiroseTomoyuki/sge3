@@ -7,7 +7,7 @@ import os
 
 def evolution_progress(generation, pop):
     fitness_samples = [i['fitness'] for i in pop]
-    data = '%4d\t%.6e\t%.6e\t%.6e' % (generation, np.min(fitness_samples), np.mean(fitness_samples), np.std(fitness_samples))
+    data = 'generation: %4d\t fitness min: %.6e\tfitness mean: %.6e\tfitness std deviation: %.6e' % (generation, np.min(fitness_samples), np.mean(fitness_samples), np.std(fitness_samples))
     if params['VERBOSE']:
         print(data)
     save_progress_to_file(data)
@@ -22,7 +22,7 @@ def save_progress_to_file(data):
 
 def save_step(generation, population):
     c = json.dumps(population)
-    open('%s/run_%d/iteration_%d.json' % (params['EXPERIMENT_NAME'], params['RUN'], generation), 'a').write(c)
+    open('%s/run_%d/iteration_%02d.json' % (params['EXPERIMENT_NAME'], params['RUN'], generation), 'a').write(c)
 
 
 def save_parameters():
