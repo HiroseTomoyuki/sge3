@@ -1,3 +1,4 @@
+from math import prod
 import re
 import random
 from sge.utilities import ordered_set
@@ -68,14 +69,43 @@ class Grammar:
                                 self.terminals.add(production)
                                 temp_production.append((production, self.T))
                             else:
-                                for value in re.findall("<.+?>|[^<>]*", production):
+                                start_index = 0
+                                # <hoge>というパターンにマッチするものを抜き出す
+                                # if hoge < 1 else ... if fuga > 1 else ... というものにはマッチしない(空白があるとマッチしない)
+                                for val in re.finditer("<[^ ].+?[^ ]>", production):
+                                    value = val.group()
+                                    value_start = val.start()
+
+                                    # value_startより手前のシンボルの処理
+                                    sym = (production[start_index:value_start], self.T)
+                                    self.terminals.add(value)
+                                    temp_production.append(sym)
+
+                                    if value != "":
+                                        sym = (value, self.NT)
+                                        temp_production.append(sym)
+                                    
+                                    """
                                     if value != "":
                                         if re.search(self.NT_PATTERN, value) is None:
+                                            print(value)
                                             sym = (value, self.T)
                                             self.terminals.add(value)
                                         else:
                                             sym = (value, self.NT)
                                         temp_production.append(sym)
+                                    """
+
+                                    # start_indexを更新
+                                    start_index = val.end()
+                                
+                                # productionの検査が最後まで行かなかったとき
+                                if start_index < len(production):
+                                    # このときは確実にterminalsが来る
+                                    sym = (production[start_index:len(production)], self.T)
+                                    self.terminals.add(value)
+                                    temp_production.append(sym)
+
                             temp_productions.append(temp_production)
                         if left_side not in self.grammar:
                             self.grammar[left_side] = temp_productions
@@ -241,4 +271,3 @@ if __name__ == "__main__":
     genome = [[0], [0, 3, 3], [0], [], [1, 1]]
     mapping_numbers = [0] * len(genome)
     print(g.mapping(genome, mapping_numbers, needs_python_filter=True))
-
