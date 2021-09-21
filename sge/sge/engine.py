@@ -58,7 +58,7 @@ def evolutionary_algorithm(evaluation_function=None, parameters_file=None):
         for i in tqdm(population):
             if i['fitness'] is None:
                 evaluate(i, evaluation_function)
-        population.sort(key=lambda x: x['fitness'])
+        population.sort(key=lambda x: x['fitness'], reverse=True)
 
         logger.evolution_progress(it, population)
         new_population = population[:params['ELITISM']]
