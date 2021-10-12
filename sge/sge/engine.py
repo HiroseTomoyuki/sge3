@@ -73,4 +73,5 @@ def evolutionary_algorithm(evaluation_function=None, parameters_file=None):
             new_population.append(ni)
         population = new_population
         it += 1
+    return list(filter(lambda x: x["fitness"] != None, population))
 
