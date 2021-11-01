@@ -28,10 +28,10 @@ def make_initial_population():
 def evaluate(ind, eval_func):
     mapping_values = [0 for i in ind['genotype']]
     phen, tree_depth = grammar.mapping(ind['genotype'], mapping_values)
-    quality, other_info = eval_func.evaluate(phen)
+    quality = eval_func.evaluate(phen)
     ind['phenotype'] = phen
     ind['fitness'] = quality
-    ind['other_info'] = other_info
+    ind['other_info'] = None
     ind['mapping_values'] = mapping_values
     ind['tree_depth'] = tree_depth
 
