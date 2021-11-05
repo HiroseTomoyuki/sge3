@@ -73,5 +73,16 @@ def evolutionary_algorithm(evaluation_function=None, parameters_file=None):
             new_population.append(ni)
         population = new_population
         it += 1
+
+    for i in tqdm(population):
+        if i['fitness'] is None:
+            evaluate(i, evaluation_function)
+    population.sort(key=lambda x: x['fitness'], reverse=True)
+    for p in population:
+        if p['fitness'] == None:
+            print('\033[31m' + "find None" + '\033[0m')
+            exit(1)
+  
+    print(population)
     return list(filter(lambda x: x["fitness"] != None, population))
 
