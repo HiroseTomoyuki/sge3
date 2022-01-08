@@ -1,8 +1,11 @@
+from copy import deepcopy
+import enum
+from multiprocessing import Pool, Queue, Process
 import random
 import sys
 import sge.grammar as grammar
 import sge.logger as logger
-from datetime import datetime
+from datetime import datetime, time
 from tqdm import tqdm
 from sge.operators.recombination import crossover
 from sge.operators.mutation import mutate
@@ -16,8 +19,9 @@ from sge.parameters import (
 
 def generate_random_individual():
     genotype = [[] for key in grammar.get_non_terminals()]
-    tree_depth = grammar.recursive_individual_creation(genotype, grammar.start_rule()[0], 0)
-    return {'genotype': genotype, 'fitness': None, 'tree_depth' : tree_depth}
+    tree_depth = grammar.recursive_individual_creation(
+        genotype, grammar.start_rule()[0], 0)
+    return {'genotype': genotype, 'fitness': None, 'tree_depth': tree_depth}
 
 
 def make_initial_population():
@@ -29,14 +33,54 @@ def evaluate(ind, eval_func):
     mapping_values = [0 for i in ind['genotype']]
     phen, tree_depth = grammar.mapping(ind['genotype'], mapping_values)
     quality = eval_func.evaluate(phen)
-    ind['phenotype'] = phen
-    ind['fitness'] = quality
+    #ind['fitness'] = quality
+    ind['fitness'] = quality if ind['fitness'] is None else ind['fitness']
     ind['other_info'] = None
     ind['mapping_values'] = mapping_values
     ind['tree_depth'] = tree_depth
+    ind['genotype'] = ind['genotype']
+    ind['phenotype'] = phen
+
+    return deepcopy(ind)
 
 
-def setup(parameters_file_path = None):
+NUM_MULTICORE = 25  # set number properly in your environment!
+EXCEPTION_DEPTH_LIMIT = 5
+
+
+def parmap(population, evaluation_function, exception_depth):
+    res = []
+    with Pool(NUM_MULTICORE) as process_pool:
+        fn = [deepcopy(evaluation_function) for _ in range(50)]
+        pop = [deepcopy(population[i]) for i in range(50)]
+        args = list(zip(pop, fn))
+        res_population = []
+        try:
+            res_population = process_pool.starmap_async(
+                evaluate, args).get(timeout=60)
+        except:
+            if exception_depth < EXCEPTION_DEPTH_LIMIT:
+                res_population = parmap(
+                    population, evaluation_function, exception_depth + 1)
+            else:
+                print(res_population)
+                for p in population:
+                    if p['fitness'] is None:
+                        res_population.append(evaluate(p, evaluation_function))
+                if len(res_population) != 50:
+                    print(f"Invalid length, {len(res_population)}")
+                    exit(1)
+        finally:
+            res.extend(deepcopy(res_population))
+
+    if len(res) != 50:
+        print(f"Invalid length, {len(res_population)}")
+        exit(1)
+
+    return res
+
+
+def setup(parameters_file_path=None):
     if parameters_file_path is not None:
         load_parameters(file_name=parameters_file_path)
     set_parameters(sys.argv[1:])
@@ -55,9 +99,14 @@ def evolutionary_algorithm(evaluation_function=None, parameters_file=None):
     population = list(make_initial_population())
     it = 0
     while it <= params['GENERATIONS']:
-        for i in tqdm(population):
-            if i['fitness'] is None:
-                evaluate(i, evaluation_function)
+        # for i in tqdm(population):
+        #     if i['fitness'] is None:
+        #         evaluate(i, evaluation_function)
+
+        next_population = []
+        next_population.extend(parmap(population, evaluation_function, 0))
+        population = deepcopy(next_population)
+
         population.sort(key=lambda x: x['fitness'], reverse=True)
 
         logger.evolution_progress(it, population)
@@ -74,15 +123,17 @@ def evolutionary_algorithm(evaluation_function=None, parameters_file=None):
         population = new_population
         it += 1
 
-    for i in tqdm(population):
-        if i['fitness'] is None:
-            evaluate(i, evaluation_function)
+    next_population = []
+    next_population.extend(parmap(population, evaluation_function, 0))
+    population = deepcopy(next_population)
+
+    # for i in tqdm(population):
+    #     if i['fitness'] is None:
+    #         evaluate(i, evaluation_function)
     population.sort(key=lambda x: x['fitness'], reverse=True)
     for p in population:
         if p['fitness'] == None:
             print('\033[31m' + "find None" + '\033[0m')
             exit(1)
-  
     print(population)
     return list(filter(lambda x: x["fitness"] != None, population))
-
